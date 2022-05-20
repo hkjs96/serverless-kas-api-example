@@ -1,36 +1,12 @@
-const { CaverExtKAS } = require("caver-js-ext-kas");
 const { SQS } = require("aws-sdk");
+const axios = require('axios');
 
-// https://www.daleseo.com/js-dotenv/ 참고
-require("dotenv").config({ path: "./.env" });
-const chainId = process.env.CHAIN_ID;
-const accessKeyId = process.env.ACCESS_KEY;
-const secretAccessKey = process.env.SECRET_ACCESS_KEY;
-
+// SQS 인스턴스 생성
 const sqs = new SQS();
-
-// Set an authorization through constructor
-const caver = new CaverExtKAS(chainId, accessKeyId, secretAccessKey);
-
-/*
-  추가하기!
-  The example below introduces how to use caver.kct.kip7.
-*/
 
 const producer = async (event) => {
   let statusCode = 200;
   let message;
-
-  /*
-    요청 Body에 해당 내용이 오나 확인해 볼것
-    {
-      "contractAddress": "0x32dbcf48cdaa93673a8c642423cb5df4fdf4f469",
-      "fromAddress": "0x2FCf7A2bBb08088CcF2e2080c611D3BEC910EbB6",
-      "toAddress": "0x2FCf7A2bBb08088CcF2e2080c611D3BEC910EbB6",
-      "amount": 1000000000000000000,
-      "webhookURL": "https://yourdomain.com/webhook"
-    }
-  */
 
   if (!event.body) {
     return {
@@ -41,21 +17,74 @@ const producer = async (event) => {
     };
   }
 
+  
+  // const reqBody = event.body;
+  /*
+  // const contractAddress = reqBody.contractAddress;
+  const contractAddress = '0x0a57e58ce884398ab9a702669a3adc488c6c2688';
+
+  const URL = `https://kip7-api.klaytnapi.com/v1/contract/${contractAddress}/transfer`;
+
+  const data = JSON.stringify({
+    "from": "0x8bbb55cabe555f2032e0e46e7f35e6253c601020",
+    "to": reqBody.to, // "0xb20786792F1513c76d3eDD995ecdb1242e4Db90f",
+    "amount": reqBody.amount //"0x2540be400"
+  });
+  const config = {
+    headers: {
+      'x-chain-id': '10001',
+      'Authorization': 'Basic S0FTS0NGVTdUVTdLTkxUUjhKVFZQMVBDOnh6UWpkUE9zMWpWazBnd2FRNVBPc0lBcWoxREhxM3U4M25Qd0xNWXE=',
+      'Content-Type': 'application/json'
+    },
+  }
+  
+  axios.post(URL, data, config)
+    .then(function (response) {
+      message = JSON.stringify(response.data);
+    })
+    .catch(function (error) {
+      statusCode = error.response.status;
+      message = JSON.stringify(error.response.data);
+    })
+    .finally(function () {
+      return {
+        statusCode,
+        body: message
+      };
+    });
+  */
+
+
+
+    /*
+      MessageAttributes 관련해서 여기서 찾아보기?
+      http://pyrasis.com/book/TheArtOfAmazonWebServices/Chapter30/13
+
+    */
+  const { to, amount } = event.body;
+  console.log(to);
   try {
-    await sqs
-      .sendMessage({
+    message = await sqs.sendMessage({
         QueueUrl: process.env.QUEUE_URL,
-        MessageBody: event.body,
+        MessageBody: JSON.stringify(event.body),
         MessageAttributes: {
-          AttributeName: {
-            StringValue: "Attribute Value",
+          // AttributeName: {
+          //   StringValue: "Attribute Value",
+          //   DataType: "String",
+          // },
+          to: {
+            StringValue: to,
+            DataType: "String",
+          },
+          amount: {
+            StringValue: amount,
             DataType: "String",
           },
         },
       })
       .promise();
 
-    message = "Message accepted!";
+    // message = "Message accepted!";
   } catch (error) {
     console.log(error);
     message = error;
@@ -66,13 +95,14 @@ const producer = async (event) => {
     statusCode,
     body: JSON.stringify({
       message,
-    }),
+    }),    
   };
 };
 
 // handler Name : jobsWorker
 
 const consumer = async (event) => {
+  /*
   for (const record of event.Records) {
     const messageAttributes = record.messageAttributes;
     console.log(
@@ -80,6 +110,17 @@ const consumer = async (event) => {
       messageAttributes.AttributeName.stringValue
     );
     console.log("Message Body: ", record.body);
+  }
+  */
+  for (const record of event.Records) {
+    const messageAttributes = record.messageAttributes;
+    console.log(
+      "Message Attribute: ",
+      messageAttributes.AttributeName.stringValue
+    );
+
+    const { body } = record;
+    console.log("Message Body: ", body);
   }
 };
 

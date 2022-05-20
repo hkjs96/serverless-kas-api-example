@@ -11,6 +11,11 @@ constructs:
     worker:
       handler: handler.consumer
 
+layers:
+  nodeModules:
+    path: ./
+    name: layer-node-modules
+
 functions:
   producer:
     handler: handler.producer
@@ -20,6 +25,23 @@ functions:
           path: /produce
     environment:
       QUEUE_URL: ${construct:jobs.queueUrl}
+    layers:
+      - {Ref: NodeModulesLambdaLayer}
+
+package:
+  excludeDevDependencies: false
+  patterns:    
+    - .serverlss
+    - .gitignore
+    - package*.json
+    - README.md
+    - node_modules
+    - serverless.yml
+    - .env
+    - test
+    - test/**
+
+
 
 plugins:
   - serverless-lift
